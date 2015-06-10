@@ -633,7 +633,22 @@ enc_hash_encdata(PG_FUNCTION_ARGS)
 	return result;
 }
 
-
+key_info* build_key_info(text* key, text* algorithm) {
+	key_info* entry;
+	if(NULL == (entry =(key_info*) malloc(sizeof(key_info)))){
+		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+				errmsg("out of memory")));
+	}
+	if(NULL == (entry->key = (char*) strdup(text_to_cstring(key)))) {
+		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+				errmsg("out of memory")));
+	}
+	if(NULL == (entry->algorithm = (char*) strdup(text_to_cstring(algorithm)))){
+		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+				errmsg("out of memory")));
+	}
+	return entry;
+}
 /*
  * Function : enc_store_key_info
  * ---------------------
@@ -643,26 +658,17 @@ enc_hash_encdata(PG_FUNCTION_ARGS)
  * @param	*text ARG[1]	encryption algorithm
  */
 PG_FUNCTION_INFO_V1(enc_store_key_info);
-
 Datum
 enc_store_key_info(PG_FUNCTION_ARGS)
 {
 	text *key = PG_GETARG_TEXT_P(0); /* encryption key */
 	text *algorithm = PG_GETARG_TEXT_P(1); /* encryption algorithm */
 
-	/* memory allocation */
-	key_info *entry = (key_info *) malloc(sizeof(key_info));
-
-	/* store key information to entry */
-	entry->key = (char *) strdup(text_to_cstring(key));
-	entry->algorithm = (char *) strdup(text_to_cstring(algorithm));
-
-	/* update lastest key with specified new key information */
-	newest_key_info = entry;
+	/* set current key information */
+	newest_key_info = build_key_info(key, algorithm);
 
 	PG_RETURN_BOOL(TRUE);
 }
-
 
 /*
  * Function : enc_store_old_key_info
@@ -681,15 +687,8 @@ enc_store_old_key_info(PG_FUNCTION_ARGS)
 	text *key = PG_GETARG_TEXT_P(0); /* encryption key */
 	text *algorithm = PG_GETARG_TEXT_P(1); /* encryption algorithm */
 
-	/* memory allocation */
-	key_info *entry = malloc(sizeof(key_info));
-
-	/* store key information to entry */
-	entry->key = (char *) strdup(text_to_cstring(key));
-	entry->algorithm = (char *) strdup(text_to_cstring(algorithm));
-
 	/* set old key information */
-	old_key_info = entry;
+	old_key_info = build_key_info(key, algorithm);
 
 	PG_RETURN_BOOL(TRUE);
 }
