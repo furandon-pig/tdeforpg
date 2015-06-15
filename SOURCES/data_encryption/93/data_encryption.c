@@ -30,6 +30,7 @@
 #include "mb/pg_wchar.h"
 #include "access/hash.h"
 #include "libpq/pqformat.h"
+#include "utils/memutils.h"
 
 #include "pgcrypto.h"
 
@@ -635,18 +636,15 @@ enc_hash_encdata(PG_FUNCTION_ARGS)
 
 key_info* build_key_info(text* key, text* algorithm) {
 	key_info* entry;
-	if(NULL == (entry =(key_info*) malloc(sizeof(key_info)))){
-		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
-				errmsg("out of memory")));
-	}
-	if(NULL == (entry->key = (char*) strdup(text_to_cstring(key)))) {
-		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
-				errmsg("out of memory")));
-	}
-	if(NULL == (entry->algorithm = (char*) strdup(text_to_cstring(algorithm)))){
-		ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
-				errmsg("out of memory")));
-	}
+	MemoryContext old_mem_context;
+
+	/* cipher key must be stored in TopMemoryContext */
+	old_mem_context = MemoryContextSwitchTo(TopMemoryContext);
+	entry =(key_info*) palloc(sizeof(key_info));
+	entry->key = (char*) pstrdup(text_to_cstring(key));
+	entry->algorithm = (char*) pstrdup(text_to_cstring(algorithm));
+	MemoryContextSwitchTo(old_mem_context);
+
 	return entry;
 }
 /*
@@ -699,17 +697,17 @@ enc_store_old_key_info(PG_FUNCTION_ARGS)
  * drop cipher key information from memory
  */
 PG_FUNCTION_INFO_V1(enc_drop_key_info);
-bool
+Datum
 enc_drop_key_info(void)
 {
 	if (newest_key_info != NULL) {
 		if (newest_key_info->key != NULL) {
-			free(newest_key_info->key);
+			pfree(newest_key_info->key);
 		}
 		if (newest_key_info->algorithm != NULL) {
-			free(newest_key_info->algorithm);
+			pfree(newest_key_info->algorithm);
 		}
-		free(newest_key_info);
+		pfree(newest_key_info);
 		newest_key_info = NULL;
 
 		PG_RETURN_BOOL(TRUE);
@@ -733,12 +731,12 @@ enc_drop_old_key_info(void)
 {
 	if (old_key_info != NULL) {
 		if (old_key_info->key != NULL) {
-			free(old_key_info->key);
+			pfree(old_key_info->key);
 		}
 		if (old_key_info->algorithm != NULL) {
-			free(old_key_info->algorithm);
+			pfree(old_key_info->algorithm);
 		}
-		free(old_key_info);
+		pfree(old_key_info);
 		old_key_info = NULL;
 
 		PG_RETURN_BOOL(TRUE);
