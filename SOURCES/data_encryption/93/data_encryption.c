@@ -647,6 +647,22 @@ key_info* build_key_info(text* key, text* algorithm) {
 
 	return entry;
 }
+
+bool
+drop_key_info(key_info* entry) {
+	if(entry != NULL) {
+		if (entry->key != NULL) {
+				pfree(entry->key);
+			}
+			if (entry->algorithm != NULL) {
+				pfree(entry->algorithm);
+			}
+			pfree(entry);
+			return true;
+	}
+	return false;
+}
+
 /*
  * Function : enc_store_key_info
  * ---------------------
@@ -662,6 +678,7 @@ enc_store_key_info(PG_FUNCTION_ARGS)
 	text *key = PG_GETARG_TEXT_P(0); /* encryption key */
 	text *algorithm = PG_GETARG_TEXT_P(1); /* encryption algorithm */
 
+	drop_key_info(newest_key_info);
 	/* set current key information */
 	newest_key_info = build_key_info(key, algorithm);
 
@@ -685,6 +702,7 @@ enc_store_old_key_info(PG_FUNCTION_ARGS)
 	text *key = PG_GETARG_TEXT_P(0); /* encryption key */
 	text *algorithm = PG_GETARG_TEXT_P(1); /* encryption algorithm */
 
+	drop_key_info(old_key_info);
 	/* set old key information */
 	old_key_info = build_key_info(key, algorithm);
 
@@ -700,21 +718,11 @@ PG_FUNCTION_INFO_V1(enc_drop_key_info);
 Datum
 enc_drop_key_info(void)
 {
-	if (newest_key_info != NULL) {
-		if (newest_key_info->key != NULL) {
-			pfree(newest_key_info->key);
-		}
-		if (newest_key_info->algorithm != NULL) {
-			pfree(newest_key_info->algorithm);
-		}
-		pfree(newest_key_info);
+	if(drop_key_info(newest_key_info)){
 		newest_key_info = NULL;
-
 		PG_RETURN_BOOL(TRUE);
 	}
-	else {
-		PG_RETURN_BOOL(FALSE);
-	}
+	PG_RETURN_BOOL(FALSE);
 }
 
 
@@ -729,21 +737,11 @@ PG_FUNCTION_INFO_V1(enc_drop_old_key_info);
 Datum
 enc_drop_old_key_info(void)
 {
-	if (old_key_info != NULL) {
-		if (old_key_info->key != NULL) {
-			pfree(old_key_info->key);
-		}
-		if (old_key_info->algorithm != NULL) {
-			pfree(old_key_info->algorithm);
-		}
-		pfree(old_key_info);
+	if(drop_key_info(old_key_info)){
 		old_key_info = NULL;
-
 		PG_RETURN_BOOL(TRUE);
 	}
-	else {
-		PG_RETURN_BOOL(FALSE);
-	}
+	PG_RETURN_BOOL(FALSE);
 }
 
 /*
