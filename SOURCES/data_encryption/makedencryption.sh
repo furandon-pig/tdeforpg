@@ -11,6 +11,14 @@
 PGVERSION=$1
 SPATH=$2
 
+#use "gmake" command if installed
+if [ ! -z "`which gmake`" ];
+then
+  MAKE=gmake
+else
+  MAKE=make
+fi
+
 cd $PGVERSION
 CDIR=`pwd`
 
@@ -21,8 +29,8 @@ then
 fi
 
 #build data_encryption
-make clean
-make PGSQL_SRC_PATH=${SPATH}
+${MAKE} clean
+${MAKE} PGSQL_SRC_PATH=${SPATH}
 mv data_encryption.so data_encryption${PGVERSION}.so
 ldd data_encryption${PGVERSION}.so
 
